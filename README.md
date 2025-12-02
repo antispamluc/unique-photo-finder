@@ -49,8 +49,8 @@ A powerful, self-hosted web tool to consolidate messy backups. Designed to help 
 
 1.  **Clone the repository**
     ```bash
-    git clone https://github.com/yourusername/disk-sort-tool.git
-    cd disk-sort-tool
+    git clone https://github.com/antispamluc/unique-photo-finder.git
+    cd unique-photo-finder
     ```
 
 2.  **Install dependencies**

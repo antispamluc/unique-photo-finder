@@ -45,8 +45,8 @@ Una potente herramienta web para consolidar sus copias de seguridad desorganizad
 
 1.  **Clonar el repositorio**
     ```bash
-    git clone https://github.com/tuusuario/disk-sort-tool.git
-    cd disk-sort-tool
+    git clone https://github.com/tuusuario/unique-photo-finder.git
+    cd unique-photo-finder
     ```
 
 2.  **Instalar dependencias**

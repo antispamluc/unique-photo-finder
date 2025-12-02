@@ -45,8 +45,8 @@ Un outil web puissant pour consolider vos sauvegardes désorganisées. Conçu po
 
 1.  **Cloner le dépôt**
     ```bash
-    git clone https://github.com/votreusername/disk-sort-tool.git
-    cd disk-sort-tool
+    git clone https://github.com/antispamluc/unique-photo-finder.git
+    cd unique-photo-finder
     ```
 
 2.  **Installer les dépendances**
