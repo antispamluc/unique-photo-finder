@@ -1,0 +1,1640 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Chercheur de Photos Uniques</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <style>
+        [v-cloak] {
+            display: none;
+        }
+
+        .image-card {
+            aspect-ratio: 1;
+            overflow: hidden;
+        }
+
+        .image-card img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.2s;
+        }
+
+        .image-card:hover img {
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 h-screen flex flex-col overflow-hidden font-sans">
+
+    <!-- Message de chargement si Vue ne démarre pas -->
+    <div id="loading" class="fixed inset-0 flex items-center justify-center bg-white z-50">
+        <div class="text-center">
+            <h2 class="text-xl font-bold text-gray-700 mb-2">Chargement...</h2>
+            <p class="text-gray-500">Si cet écran reste bloqué, vérifiez la console (F12).</p>
+        </div>
+    </div>
+
+    <div id="app" class="flex flex-col h-full" v-cloak>
+        <!-- Header -->
+        <header class="bg-blue-600 text-white shadow-md z-20">
+            <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <div class="bg-white p-2 rounded-lg shadow-sm">
+                        <span class="text-2xl">🔍</span>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold text-white leading-tight">{{ t('title') }}</h1>
+                        <p class="text-blue-100 text-xs">{{ t('subtitle') }}</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="flex gap-2 bg-blue-700 rounded-lg p-1">
+                        <button @click="setLang('fr')"
+                            :class="['px-2 py-1 rounded text-sm transition', currentLang === 'fr' ? 'bg-white text-blue-800 font-bold' : 'text-blue-200 hover:bg-blue-600']">🇫🇷</button>
+                        <button @click="setLang('en')"
+                            :class="['px-2 py-1 rounded text-sm transition', currentLang === 'en' ? 'bg-white text-blue-800 font-bold' : 'text-blue-200 hover:bg-blue-600']">🇬🇧</button>
+                        <button @click="setLang('es')"
+                            :class="['px-2 py-1 rounded text-sm transition', currentLang === 'es' ? 'bg-white text-blue-800 font-bold' : 'text-blue-200 hover:bg-blue-600']">🇪🇸</button>
+                    </div>
+                    <div class="flex bg-blue-800 rounded-lg p-1">
+                        <button @click="currentTab = 'compare'"
+                            :class="['px-4 py-2 rounded-md text-sm font-medium transition-all', currentTab === 'compare' ? 'bg-white text-blue-600 shadow-sm' : 'text-blue-100 hover:bg-blue-700']">
+                            🏠 {{ t('tab_home') }}
+                        </button>
+                        <button @click="currentTab = 'results'"
+                            :class="['px-4 py-2 rounded-md text-sm font-medium transition-all', currentTab === 'results' ? 'bg-white text-blue-600 shadow-sm' : 'text-blue-100 hover:bg-blue-700']">
+                            📊 {{ t('tab_results') }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+
+        <!-- COMPARE/ACCUEIL TAB -->
+        <div v-if="currentTab === 'compare'" class="flex flex-col flex-1 overflow-y-auto">
+            <!-- Help Section - Always Visible -->
+            <div
+                class="bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-500 p-4 m-2 rounded-lg shadow-sm">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="text-3xl">💡</span>
+                    <h2 class="font-bold text-blue-900 text-xl">{{ t('help_title') }}</h2>
+                </div>
+
+                <div class="space-y-4 text-sm text-gray-800">
+                    <div class="bg-white p-4 rounded-lg border-2 border-blue-200 shadow-sm">
+                        <p class="font-semibold text-blue-900 mb-2 text-base">{{ t('help_goal_title') }}</p>
+                        <p class="leading-relaxed">{{ t('help_goal_desc1') }}</p>
+                        <p class="mt-2 leading-relaxed">{{ t('help_goal_desc2') }}</p>
+                    </div>
+
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div class="bg-orange-50 p-4 rounded-lg border-2 border-orange-300">
+                            <p class="font-semibold text-orange-800 mb-2 flex items-center gap-2">
+                                <span>📂</span> {{ t('help_source_title') }}
+                            </p>
+                            <p class="text-sm leading-relaxed">{{ t('help_source_desc') }}</p>
+                            <p class="text-xs text-orange-700 mt-2 italic">{{ t('help_source_example') }}</p>
+                        </div>
+                        <div class="bg-green-50 p-4 rounded-lg border-2 border-green-300">
+                            <p class="font-semibold text-green-800 mb-2 flex items-center gap-2">
+                                <span>🗄️</span> {{ t('help_vault_title') }}
+                            </p>
+                            <p class="text-sm leading-relaxed">{{ t('help_vault_desc') }}</p>
+                            <p class="text-xs text-green-700 mt-2 italic">{{ t('help_vault_example') }}</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-gradient-to-r from-yellow-50 to-amber-50 p-4 rounded-lg border-2 border-yellow-400">
+                        <p class="font-semibold text-amber-900 mb-3 text-base flex items-center gap-2">
+                            <span>📋</span> {{ t('help_steps_title') }}
+                        </p>
+                        <ol class="space-y-3 text-sm">
+                            <li class="flex gap-3">
+                                <span
+                                    class="flex-shrink-0 w-7 h-7 rounded-full bg-blue-500 text-white font-bold flex items-center justify-center">1</span>
+                                <div>
+                                    <strong>{{ t('help_step1_title') }}</strong><br>
+                                    <span class="text-gray-600">{{ t('help_step1_desc') }}</span>
+                                </div>
+                            </li>
+                            <li class="flex gap-3">
+                                <span
+                                    class="flex-shrink-0 w-7 h-7 rounded-full bg-blue-500 text-white font-bold flex items-center justify-center">2</span>
+                                <div>
+                                    <strong>{{ t('help_step2_title') }}</strong><br>
+                                    <span class="text-gray-600" v-html="t('help_step2_desc')"></span>
+                                </div>
+                            </li>
+                            <li class="flex gap-3">
+                                <span
+                                    class="flex-shrink-0 w-7 h-7 rounded-full bg-purple-500 text-white font-bold flex items-center justify-center">3</span>
+                                <div>
+                                    <strong>{{ t('help_step3_title') }}</strong><br>
+                                    <span class="text-gray-600" v-html="t('help_step3_desc')"></span>
+                                </div>
+                            </li>
+                        </ol>
+                    </div>
+
+                    <div class="bg-blue-50 p-3 rounded border-l-4 border-blue-400">
+                        <p class="text-sm text-blue-800" v-html="t('help_pause_tip')"></p>
+                    </div>
+
+                    <div class="bg-red-50 p-3 rounded border-l-4 border-red-400">
+                        <p class="text-sm text-red-800" v-html="t('help_safety')"></p>
+                    </div>
+                </div>
+            </div>
+            <!-- New Backup-Style Header -->
+            <div class="bg-white border-b p-4 shadow-sm z-10">
+                <div class="flex items-stretch gap-4 mb-4">
+
+                    <!-- 1. SOURCE (Left) -->
+                    <div class="flex-1 bg-orange-50 border-2 border-orange-200 rounded-xl p-3 flex flex-col relative">
+                        <div
+                            class="absolute -top-3 left-4 bg-orange-100 text-orange-800 px-2 text-xs font-bold uppercase tracking-wide border border-orange-200">
+                            {{ t('disk_section_clean_title') }}
+                        </div>
+                        <p class="text-sm text-gray-600 mb-1 h-8">{{ t('disk_section_clean_desc') }}</p>
+                        <select v-model="aNettoyerLabel" @change="targetLabel = aNettoyerLabel"
+                            class="w-full border-2 border-orange-300 bg-white rounded-lg p-2 text-sm text-gray-800 shadow-sm focus:ring-2 focus:ring-orange-500 outline-none">
+                            <option value="" disabled>{{ t('choose_disk') }}</option>
+                            <optgroup v-if="sources.length > 0" :label="t('already_scanned')">
+                                <option v-for="s in sources" :key="s" :value="s">{{ getSourceDisplayName(s) }}</option>
+                            </optgroup>
+                            <optgroup v-if="drives.length > 0" :label="t('all_drives')">
+                                <option v-for="drive in drives" :key="drive.uuid" :value="drive.uuid">
+                                    {{ drive.label || t('no_name') }} ({{ drive.size }})
+                                </option>
+                            </optgroup>
+                        </select>
+                        <div class="flex gap-2 mt-2">
+                            <button @click="openBrowser('aNettoyer')"
+                                class="px-3 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded text-xs font-bold flex items-center gap-1">
+                                {{ t('browse_button') }}
+                            </button>
+                            <div v-if="selectedPath && selectedPath !== '/'"
+                                class="text-xs text-gray-600 flex items-center bg-gray-100 px-2 rounded border flex-1 truncate">
+                                {{ selectedPath }}
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2 italic">{{ t('folder_hint') }}
+                        </p>
+
+                        <!-- SCAN CONTROLS (À NETTOYER) -->
+                        <div v-if="aNettoyerLabel" class="mt-2 border-t pt-2">
+                            <div class="bg-yellow-50 border-l-4 border-yellow-400 p-2 mb-2 text-xs"
+                                v-html="t('scan_warning')">
+                            </div>
+                            <div class="space-y-2">
+                                <!-- Scan Filters Explanation -->
+                                <div class="bg-blue-50 border border-blue-200 p-2 rounded-lg text-sm text-gray-700">
+                                    <p class="font-semibold text-blue-900 mb-1">{{ t('scan_filters_title') }}</p>
+                                    <p class="text-xs leading-relaxed" v-html="t('scan_filters_desc')">
+                                    </p>
+                                </div>
+
+                                <!-- Scan Filters Checkboxes -->
+                                <div
+                                    class="flex flex-wrap gap-3 mb-2 text-xs font-bold text-gray-700 bg-white p-2 rounded border">
+                                    <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox"
+                                            v-model="scanFilters.photo" class="text-orange-600 rounded"> {{
+                                        t('filter_photos') }}</label>
+                                    <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox"
+                                            v-model="scanFilters.video" class="text-orange-600 rounded"> {{
+                                        t('filter_videos') }}</label>
+                                    <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox"
+                                            v-model="scanFilters.audio" class="text-orange-600 rounded"> {{
+                                        t('filter_audio') }}</label>
+                                    <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox"
+                                            v-model="scanFilters.document" class="text-orange-600 rounded"> {{
+                                        t('filter_docs') }}</label>
+                                </div>
+
+                                <label class="flex items-center gap-2 text-xs cursor-pointer">
+                                    <input type="checkbox" v-model="scanUpdateANettoyer"
+                                        class="rounded text-orange-600 focus:ring-orange-500">
+                                    <span>{{ t('update_mode') }}</span>
+                                </label>
+                                <button @click="scanDisk(aNettoyerLabel, 'aNettoyer')" :disabled="isScanning"
+                                    class="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-gray-400 text-white px-3 py-1.5 rounded-lg font-bold transition text-sm flex justify-center items-center gap-2">
+                                    <span v-if="scanningANettoyer" class="animate-spin">⏳</span>
+                                    {{ scanningANettoyer ? t('scan_in_progress') : t('scan_disk_button') }}
+                                </button>
+                            </div>
+
+                            <!-- Progress Bar -->
+                            <div v-if="scanningANettoyer && scanProgress"
+                                class="mt-3 bg-white rounded-lg p-3 border shadow-sm">
+                                <div class="flex justify-between text-xs font-bold text-gray-700 mb-1">
+                                    <span>{{ scanProgress.status }}</span>
+                                    <span>{{ scanProgress.added }} fichiers</span>
+                                </div>
+                                <div class="w-full h-3 bg-gray-200 rounded-full overflow-hidden relative">
+                                    <div class="h-full bg-orange-500 transition-all duration-500" style="width: 100%">
+                                    </div>
+                                    <div class="absolute inset-0 bg-white/30 animate-pulse"></div>
+                                </div>
+                                <div class="flex justify-between items-center mt-2">
+                                    <div class="text-xs text-gray-500 font-mono truncate flex-1 mr-2">
+                                        {{ scanProgress.current_file || '...' }}
+                                    </div>
+                                    <button @click="stopScan"
+                                        class="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold hover:bg-red-200">
+                                        ⛔ PAUSE
+                                    </button>
+                                </div>
+                                <p v-if="scanProgress.status === 'stopped'"
+                                    class="text-xs text-orange-600 mt-1 font-bold">
+                                    Scan en pause.
+                                </p>
+                                <!-- Debug Info -->
+                                <div v-if="scanProgress.debug_raw_include !== undefined"
+                                    class="mt-2 text-[10px] text-gray-400 font-mono bg-gray-50 p-1 rounded border">
+                                    DEBUG SERVER: Filters={{ scanProgress.debug_raw_include || 'NONE' }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ARROW (Center) -->
+                    <div class="flex flex-col justify-center items-center text-gray-400 w-16">
+                        <div class="text-xs font-bold mb-1 uppercase tracking-widest">Comparer</div>
+                        <svg class="w-10 h-10 animate-pulse text-blue-500" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
+                        </svg>
+                        <div class="text-xs font-bold mt-1 uppercase tracking-widest">Avec</div>
+                    </div>
+
+                    <!-- 2. MASTER (Right) -->
+                    <div class="flex-1 bg-green-50 border-2 border-green-200 rounded-xl p-3 flex flex-col relative">
+                        <div
+                            class="absolute -top-3 left-4 bg-green-100 text-green-800 px-2 text-xs font-bold uppercase tracking-wide border border-green-200">
+                            {{ t('disk_section_vault_title') }}
+                        </div>
+                        <p class="text-sm text-gray-600 mb-1 h-8">{{ t('disk_section_vault_desc') }}</p>
+                        <select v-model="coffreFortLabel" @change="masterLabel = coffreFortLabel"
+                            class="w-full border-2 border-green-300 bg-white rounded-lg p-2 text-sm text-gray-800 shadow-sm focus:ring-2 focus:ring-green-500 outline-none">
+                            <option value="" disabled>{{ t('choose_vault') }}</option>
+                            <optgroup v-if="sources.length > 0" :label="t('already_scanned')">
+                                <option v-for="s in sources" :key="s" :value="s">{{ getSourceDisplayName(s) }}</option>
+                            </optgroup>
+                            <optgroup v-if="drives.length > 0" :label="t('all_drives')">
+                                <option v-for="drive in drives" :key="drive.uuid" :value="drive.uuid">
+                                    {{ drive.label || t('no_name') }} ({{ drive.size }})
+                                </option>
+                            </optgroup>
+                        </select>
+                        <div class="flex gap-2 mt-2">
+                            <button @click="openBrowser('coffreFort')"
+                                class="px-3 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded text-xs font-bold flex items-center gap-1">
+                                {{ t('browse_button') }}
+                            </button>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2 italic">{{ t('vault_hint') }}
+                        </p>
+
+                        <!-- SCAN CONTROLS (COFFRE-FORT) -->
+                        <div v-if="coffreFortLabel" class="mt-2 border-t pt-2">
+                            <div class="bg-yellow-50 border-l-4 border-yellow-400 p-2 mb-2 text-xs"
+                                v-html="t('scan_warning')">
+                            </div>
+                            <div class="space-y-2">
+                                <!-- Scan Filters Explanation -->
+                                <div class="bg-blue-50 border border-blue-200 p-2 rounded-lg text-sm text-gray-700">
+                                    <p class="font-semibold text-blue-900 mb-1">{{ t('scan_filters_title') }}</p>
+                                    <p class="text-xs leading-relaxed" v-html="t('scan_filters_desc')">
+                                    </p>
+                                </div>
+
+                                <!-- Scan Filters -->
+                                <div
+                                    class="flex flex-wrap gap-3 mb-2 text-xs font-bold text-gray-700 bg-white p-2 rounded border">
+                                    <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox"
+                                            v-model="scanFilters.photo" class="text-green-600 rounded">
+                                        {{ t('filter_photos') }}</label>
+                                    <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox"
+                                            v-model="scanFilters.video" class="text-green-600 rounded">
+                                        {{ t('filter_videos') }}</label>
+                                    <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox"
+                                            v-model="scanFilters.audio" class="text-green-600 rounded">
+                                        {{ t('filter_audio') }}</label>
+                                    <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox"
+                                            v-model="scanFilters.document" class="text-green-600 rounded">
+                                        {{ t('filter_docs') }}</label>
+                                </div>
+
+                                <label class="flex items-center gap-2 text-xs cursor-pointer">
+                                    <input type="checkbox" v-model="scanUpdateCoffreFort"
+                                        class="rounded text-green-600 focus:ring-green-500">
+                                    <span>{{ t('update_mode') }}</span>
+                                </label>
+                                <button @click="scanDisk(coffreFortLabel, 'coffreFort')" :disabled="isScanning"
+                                    class="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-3 py-1.5 rounded-lg font-bold transition text-sm flex justify-center items-center gap-2">
+                                    <span v-if="scanningCoffreFort" class="animate-spin">⏳</span>
+                                    {{ scanningCoffreFort ? t('scan_in_progress') : t('scan_disk_button') }}
+                                </button>
+                            </div>
+
+                            <!-- Progress Bar -->
+                            <div v-if="scanningCoffreFort && scanProgress"
+                                class="mt-3 bg-white rounded-lg p-3 border shadow-sm">
+                                <div class="flex justify-between text-xs font-bold text-gray-700 mb-1">
+                                    <span>{{ scanProgress.status }}</span>
+                                    <span>{{ scanProgress.added }} fichiers</span>
+                                </div>
+                                <div class="w-full h-3 bg-gray-200 rounded-full overflow-hidden relative">
+                                    <div class="h-full bg-green-500 transition-all duration-500" style="width: 100%">
+                                    </div>
+                                    <div class="absolute inset-0 bg-white/30 animate-pulse"></div>
+                                </div>
+                                <div class="flex justify-between items-center mt-2">
+                                    <div class="text-xs text-gray-500 font-mono truncate flex-1 mr-2">
+                                        {{ scanProgress.current_file || '...' }}
+                                    </div>
+                                    <button @click="stopScan"
+                                        class="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold hover:bg-red-200">
+                                        ⛔ PAUSE
+                                    </button>
+                                </div>
+                                <p v-if="scanProgress.status === 'stopped'"
+                                    class="text-xs text-orange-600 mt-1 font-bold">
+                                    Scan en pause.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+
+
+
+        <!-- RÉSULTATS TAB -->
+        <div v-if="currentTab === 'results'" class="flex flex-col flex-1 overflow-y-auto">
+            <!-- Comparison Setup & Filters -->
+            <div class="bg-white border-b shadow-sm z-10">
+                <div class="p-4 bg-purple-50 border-b border-purple-100">
+                    <div class="bg-white rounded-xl shadow-sm border p-6 mb-6">
+                        <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                            <span
+                                class="bg-blue-100 text-blue-600 w-8 h-8 rounded-full flex items-center justify-center text-sm">1</span>
+                            {{ t('step1_title') }}
+                        </h2>
+                        <p class="text-gray-600 mb-6 ml-10">{{ t('step1_desc') }}</p>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 ml-10">
+                            <!-- Source Drive -->
+                            <div class="space-y-3">
+                                <label class="block font-medium text-gray-700">{{ t('source_drive') }}</label>
+                                <p class="text-xs text-gray-500">{{ t('source_desc') }}</p>
+                                <select v-model="targetLabel"
+                                    class="w-full border border-orange-300 rounded p-2 text-sm bg-white">
+                                    <option value="" disabled>-- Choisir --</option>
+                                    <option v-for="s in sources" :key="s" :value="s">{{ getSourceDisplayName(s) }}
+                                    </option>
+                                </select>
+                            </div>
+
+                            <!-- Vault Drive -->
+                            <div class="space-y-3">
+                                <label class="block font-medium text-gray-700">{{ t('vault_drive') }}</label>
+                                <p class="text-xs text-gray-500">{{ t('vault_desc') }}</p>
+                                <select v-model="masterLabel"
+                                    class="w-full border border-green-300 rounded p-2 text-sm bg-white">
+                                    <option value="" disabled>-- Choisir --</option>
+                                    <option v-for="s in sources" :key="s" :value="s">{{ getSourceDisplayName(s) }}
+                                    </option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Compare Button -->
+                        <div class="ml-10 mt-6">
+                            <button @click="loadFolders"
+                                class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-bold transition shadow-sm">
+                                {{ t('compare_button') }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Inline Filters -->
+                    <div class="p-3 bg-gray-50 flex flex-wrap items-center gap-4 text-sm border-b">
+                        <span class="font-bold text-gray-700 flex items-center gap-1">
+                            <span>🎯</span> Filtres :
+                        </span>
+
+                        <label
+                            class="flex items-center gap-1 cursor-pointer bg-white px-2 py-1 rounded border hover:bg-gray-50">
+                            <input type="checkbox" v-model="compareEverything" class="rounded text-blue-600">
+                            <span class="font-bold text-blue-800">Tout comparer</span>
+                        </label>
+
+                        <div class="flex items-center gap-3 border-l pl-3 ml-2">
+                            <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox"
+                                    v-model="filters.photo" class="rounded text-purple-600"> Photos</label>
+                            <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox"
+                                    v-model="filters.video" class="rounded text-purple-600"> Vidéos</label>
+                            <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox"
+                                    v-model="filters.audio" class="rounded text-purple-600"> Audio</label>
+                            <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox"
+                                    v-model="filters.document" class="rounded text-purple-600"> Docs</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results Area -->
+                <div class="flex-1 overflow-hidden flex">
+                    <!-- Sidebar -->
+                    <div class="w-1/4 bg-gray-50 border-r overflow-y-auto p-2">
+                        <!-- Search Filter -->
+                        <div v-if="folders.length > 0" class="mb-2">
+                            <input type="text" v-model="folderSearchFilter" :placeholder="t('search_placeholder')"
+                                class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                            <p class="text-xs text-gray-500 mt-1">{{ filteredFolders.length }} / {{ folders.length }}
+                                dossiers</p>
+                        </div>
+
+                        <div v-if="folders.length === 0" class="text-center text-gray-500 mt-10">
+                            <p>{{ t('no_results') }}</p>
+                        </div>
+                        <div v-else class="space-y-1">
+                            <div v-for="folder in filteredFolders" :key="folder.path"
+                                :class="['p-2 rounded cursor-pointer text-sm truncate flex justify-between items-center group', selectedFolder === folder ? 'bg-blue-100 text-blue-800 font-bold' : 'hover:bg-gray-200']"
+                                @click="selectFolder(folder)">
+                                <div class="truncate flex-1" :title="folder.path">
+                                    📁 {{ formatPathForDisplay(folder.path) }}
+                                    <span class="text-xs text-gray-500">({{ folder.files.length }})</span>
+                                </div>
+                                <button @click.stop="openFolder(folder.path)"
+                                    title="Ouvrir ce dossier dans l'explorateur"
+                                    class="opacity-0 group-hover:opacity-100 p-1 hover:bg-blue-200 rounded text-xs">
+                                    ↗️
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Main Content -->
+                    <div class="flex-1 flex flex-col overflow-hidden bg-white">
+                        <div v-if="selectedFolder" class="p-4 border-b bg-gray-50 flex justify-between items-center">
+                            <div>
+                                <h3 class="font-bold text-lg truncate" :title="selectedFolder.path">{{
+                                    formatPathForDisplay(selectedFolder.path) }}</h3>
+                                <p class="text-sm text-gray-600">{{ totalSelectedFiles }} {{ t('files_selected') }}</p>
+                            </div>
+                            <div class="flex gap-2">
+                                <button @click="selectAll(true)" class="text-xs bg-white border px-2 py-1 rounded">{{
+                                    t('select_all') }}</button>
+                                <button @click="selectAll(false)" class="text-xs bg-white border px-2 py-1 rounded">{{
+                                    t('select_none') }}</button>
+                            </div>
+                        </div>
+
+                        <div class="flex-1 overflow-y-auto p-4">
+                            <div v-if="!selectedFolder" class="h-full flex items-center justify-center text-gray-400">
+                                {{ t('select_folder') }}
+                            </div>
+                            <div v-else
+                                class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 gap-2">
+                                <div v-for="file in selectedFolder.files" :key="file.name"
+                                    class="border rounded-lg hover:shadow-md transition relative group h-40 flex flex-col justify-between"
+                                    :class="{'ring-2 ring-blue-500 bg-blue-50': file.selected}"
+                                    @contextmenu.prevent="openFile(file.path)"
+                                    title="Clic droit pour ouvrir le fichier">
+                                    <div class="absolute top-2 right-2 z-10">
+                                        <input type="checkbox" v-model="file.selected"
+                                            class="w-5 h-5 rounded text-blue-600">
+                                    </div>
+
+                                    <div class="flex-1 flex items-center justify-center overflow-hidden">
+                                        <img v-if="isImage(file.name)"
+                                            :src="`/api/image?path=${encodeURIComponent(file.path)}`" loading="lazy"
+                                            class="w-full h-full object-contain">
+                                        <span v-else class="text-2xl">📄</span>
+                                    </div>
+                                    <div class="bg-white py-1 px-2">
+                                        <p class="text-xs truncate font-medium" :title="file.name">{{ file.name }}</p>
+                                        <p class="text-[10px] text-gray-500">{{ (file.size / 1024 / 1024).toFixed(2) }}
+                                            MB
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Footer Actions -->
+                        <div v-if="selectedFolder" class="p-4 border-t bg-gray-50 flex justify-between items-center">
+                            <!-- Left: Delete -->
+                            <div>
+                                <button @click="deleteFiles"
+                                    class="px-4 py-2 bg-red-100 text-red-700 border border-red-200 rounded-lg font-bold hover:bg-red-200 transition flex items-center gap-2"
+                                    :disabled="copying || totalSelectedFiles === 0" :title="t('delete')">
+                                    🗑️ {{ t('delete') }}
+                                </button>
+                            </div>
+
+                            <!-- Right: Copy/Move -->
+                            <div class="flex items-center gap-4">
+                                <label
+                                    class="flex items-center gap-2 text-sm cursor-pointer bg-gray-100 px-3 py-2 rounded border hover:bg-gray-200">
+                                    <input type="checkbox" v-model="moveMode"
+                                        class="rounded text-red-600 focus:ring-red-500">
+                                    <span :class="moveMode ? 'text-red-600 font-bold' : 'text-gray-700'">{{
+                                        t('move_mode')
+                                        }}</span>
+                                </label>
+
+                                <div class="flex gap-2">
+                                    <input type="text" v-model="destPath" class="border rounded px-3 py-2 text-sm w-96"
+                                        placeholder="Chemin de destination...">
+                                    <button @click="copyFiles"
+                                        :class="['px-6 py-2 rounded-lg font-bold text-white shadow transition', moveMode ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700']"
+                                        :disabled="copying || totalSelectedFiles === 0">
+                                        {{ copying ? t('waiting') : (moveMode ? t('move') : t('copy')) }}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BROWSER MODAL -->
+            <div v-if="showBrowser" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[80vh]">
+                    <div class="p-4 border-b flex justify-between items-center bg-gray-50 rounded-t-xl">
+                        <h3 class="font-bold text-gray-800">📂 Choisir un dossier</h3>
+                        <button @click="showBrowser = false" class="text-gray-500 hover:text-gray-700">X</button>
+                    </div>
+                    <div class="p-2 bg-gray-100 border-b flex gap-2">
+                        <button @click="browseUp" class="px-3 py-1 bg-white border rounded hover:bg-gray-50">⬆️
+                            Remonter</button>
+                        <div
+                            class="flex-1 px-3 py-1 bg-white border rounded overflow-hidden text-ellipsis whitespace-nowrap font-mono text-sm">
+                            {{ browserPath }}
+                        </div>
+                    </div>
+                    <div class="p-4 overflow-y-auto flex-1">
+                        <div v-if="browserLoading" class="text-center py-8">
+                            <span class="animate-spin text-2xl">⏳</span> Chargement...
+                        </div>
+                        <div v-else class="space-y-1">
+                            <div v-for="dir in browserDirs" :key="dir" @click="browseTo(dir)"
+                                class="p-2 hover:bg-blue-50 rounded cursor-pointer flex items-center gap-2 border border-transparent hover:border-blue-100">
+                                <span>📁</span> {{ dir }}
+                            </div>
+                            <div v-if="browserDirs.length === 0" class="text-gray-400 italic text-center py-4">
+                                Dossier vide ou inaccessible
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-4 border-t flex justify-end gap-3 bg-gray-50 rounded-b-xl">
+                        <button @click="showBrowser = false"
+                            class="px-4 py-2 text-gray-600 hover:bg-gray-200 rounded">Annuler</button>
+                        <button @click="confirmBrowserSelection"
+                            class="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-bold">
+                            ✅ Choisir ce dossier
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            const { createApp } = Vue
+
+            createApp({
+                data() {
+                    return {
+                        currentTab: 'compare',
+                        sources: [],
+                        drives: [],
+                        // Integrated Scan Data
+                        scanUpdateANettoyer: true,
+                        scanUpdateCoffreFort: true,
+                        scanningANettoyer: false,
+                        scanningCoffreFort: false,
+                        aNettoyerLabel: '',
+                        coffreFortLabel: '',
+
+                        // Scan Filters (Global for simplicity)
+                        scanFilters: {
+                            photo: false,
+                            video: false,
+                            audio: false,
+                            document: false
+                        },
+
+                        // Scan progress tracking
+                        isScanning: false,
+                        paused: false,
+                        scanProgress: null,
+
+                        // Legacy scan variables
+                        selectedPath: null,
+                        selectedDrive: null,
+                        scanLabel: '',
+                        scanLabelDisplay: '',
+                        // Browser state
+                        showBrowser: false,
+                        browserPath: '',
+                        browserDirs: [],
+                        browserLoading: false,
+                        browserTarget: '', // 'aNettoyer' or 'coffreFort'
+
+                        // Source Manager
+                        showSourceManager: false,
+
+                        // Help section
+                        showHelpCompare: false,
+
+                        // Advanced Filters
+                        showAdvancedFilters: false,
+                        compareEverything: false,
+                        customIncludeExt: '',
+                        customExcludeExt: '',
+                        advFilters: {
+                            include: {
+                                // Photos
+                                jpg: false, jpeg: false, png: false, gif: false, bmp: false, webp: false, tiff: false, tif: false,
+                                heic: false, heif: false, raw: false, cr2: false, cr3: false, nef: false, arw: false, dng: false,
+                                orf: false, rw2: false, pef: false, raf: false,
+                                // Videos
+                                mp4: false, mov: false, avi: false, mkv: false, wmv: false, flv: false, webm: false, m4v: false,
+                                mts: false, m2ts: false, threeGp: false, mpg: false, mpeg: false,
+                                // Audio
+                                mp3: false, flac: false, wav: false, m4a: false, aac: false, ogg: false, wma: false,
+                                // Documents
+                                pdf: false, doc: false, docx: false, txt: false, xls: false, xlsx: false, ppt: false, pptx: false
+                            },
+                            exclude: {
+                                tmp: false, db: false, ini: false, lrcat: false, xmp: false, cache: false, log: false
+                            }
+                        },
+
+                        masterLabel: '',
+                        targetLabel: '',
+                        folders: [],
+                        folderSearchFilter: '', // NEW: Filter for folder list
+                        selectedFolder: null,
+                        loading: false,
+                        copying: false,
+                        destPath: '/mnt/PSSD-T7/RECUP_UNIDISK',
+                        moveMode: false,
+                        filters: { photo: true, video: true, audio: true, document: true },
+                        currentLang: 'fr',
+                        translations: {
+                            fr: {
+                                title: "Chercheur de Photos Uniques",
+                                subtitle: "Tri intelligent & Détection d'orphelins",
+                                tab_home: "Accueil & Scan",
+                                tab_results: "Résultats",
+                                step1_title: "1. Configuration des Disques",
+                                step1_desc: "Sélectionnez les deux disques concernés par l'opération.",
+                                source_drive: "Disque À NETTOYER (Source)",
+                                source_desc: "Le disque qui contient le bazar à trier.",
+                                vault_drive: "Disque COFFRE-FORT (Référence)",
+                                vault_desc: "Le disque propre où tout devrait être.",
+                                browse: "Parcourir...",
+                                step2_title: "2. Analyse (Séquentielle)",
+                                step2_desc: "Pour ne pas surcharger votre ordinateur, scannez un disque à la fois.",
+                                scan_source: "Scanner le disque SOURCE",
+                                scan_vault: "Scanner le disque COFFRE-FORT",
+                                scan_button: "LANCER LE SCAN",
+                                pause: "PAUSE",
+                                resume: "REPRENDRE",
+                                scanning: "Analyse en cours...",
+                                waiting: "En attente...",
+                                scan_advice: "Conseil : Commencez par le disque 'À Nettoyer', puis lancez le 'Coffre-fort' une fois le premier terminé.",
+                                filters_title: "Filtres de fichiers",
+                                results_title: "Fichiers Orphelins",
+                                results_desc: "Fichiers présents sur la SOURCE mais absents du COFFRE-FORT.",
+                                search_placeholder: "🔍 Filtrer par dossier ou nom de fichier...",
+                                no_results: "Aucun résultat.",
+                                select_folder: "Sélectionnez un dossier à gauche pour voir les fichiers",
+                                select_all: "Tout cocher",
+                                select_none: "Tout décocher",
+                                files_selected: "fichiers sélectionnés",
+                                move_mode: "Mode DÉPLACEMENT",
+                                copy: "COPIER",
+                                move: "DÉPLACER",
+                                delete: "SUPPRIMER",
+                                delete_confirm_title: "⚠️ CONFIRMATION DE SUPPRESSION ⚠️",
+                                delete_confirm_body: "Vous allez déplacer {count} fichier(s) vers la CORBEILLE du disque SOURCE :\n👉 {source}\n\n♻️ Les fichiers seront déplacés dans la corbeille ($RECYCLE.BIN ou .Trash).\n✅ Le disque COFFRE-FORT n'est PAS concerné.\n\nVoulez-vous continuer ?",
+                                copy_confirm: "CONFIRMATION : {action} {count} fichiers ?",
+                                success_delete: "{count} fichiers supprimés avec succès.",
+                                error_delete: "Certains fichiers n'ont pas pu être supprimés:\n{errors}",
+                                open_folder_error: "Erreur ouverture dossier: {error}",
+                                // Home tab - Help section
+                                help_title: "Comment utiliser ce logiciel ?",
+                                help_goal_title: "🎯 Qu'est-ce que fait ce logiciel ?",
+                                help_goal_desc1: "Ce logiciel va comparer deux disques et vous montrer les fichiers (photos, vidéos, documents...) qui existent UNIQUEMENT sur le disque \"À nettoyer\" mais PAS ENCORE dans votre \"Coffre-fort\".",
+                                help_goal_desc2: "Ces fichiers uniques sont appelés des \"orphelins\" 🧸. Vous pourrez les voir et décider de les copier vers votre coffre-fort ou de les supprimer.",
+                                help_source_title: "📂 Disque \"À NETTOYER\"",
+                                help_source_desc: "Le disque qui contient vos fichiers en vrac (carte SD, clé USB, ancien disque, téléphone...). C'est celui que vous voulez \"nettoyer\" et trier.",
+                                help_source_example: "➔ Exemple : votre carte SD d'appareil photo ou votre vieille clé USB",
+                                help_vault_title: "🗄️ Disque \"COFFRE-FORT\"",
+                                help_vault_desc: "Votre disque de référence où tout est bien rangé. On ne modifiera JAMAIS ce disque, il sert juste de comparaison.",
+                                help_vault_example: "➔ Exemple : votre disque dur principal où vous archivez vos photos",
+                                help_steps_title: "📋 Comment procéder ? (3 étapes simples)",
+                                help_step1_title: "Scanner le disque \"À nettoyer\"",
+                                help_step1_desc: "Choisissez votre disque (ou un dossier spécifique si vous voulez scanner seulement une partie), cochez les types de fichiers à analyser (Photos, Vidéos...), puis cliquez sur \"SCANNER CE DISQUE\".",
+                                help_step2_title: "Scanner le disque \"Coffre-fort\"",
+                                help_step2_desc: "⚠️ Important : Attendez que le premier scan soit terminé, puis faites la même chose pour votre disque de référence. Les scans se font un à la fois pour ne pas surcharger votre ordinateur.",
+                                help_step3_title: "Aller dans l'onglet \"RÉSULTATS\"",
+                                help_step3_desc: "Une fois les deux disques scannés, cliquez en haut sur l'onglet \"✨ RÉSULTATS\" pour voir vos fichiers orphelins et les copier si le souhaitez.",
+                                help_pause_tip: "💡 Astuce : Pendant un scan, vous pouvez cliquer sur le bouton \"⛔ PAUSE\" pour l'arrêter temporairement. Vous pourrez reprendre plus tard en cochant \"Mode Mise à jour\".",
+                                help_safety: "⚠️ Rassurez-vous : Le scan ne modifie ni ne déplace AUCUN fichier. Il ne fait que \"lire\" ce qu'il y a sur vos disques.",
+                                // Disk selection area
+                                disk_section_clean_title: "1. À Trier / Nettoyer",
+                                disk_section_clean_desc: "Le disque ou dossier qui contient vos fichiers en vrac que vous voulez vérifier.",
+                                disk_section_vault_title: "2. Référence / Coffre-fort",
+                                disk_section_vault_desc: "Le disque où tout est bien rangé. On ne touchera PAS à ce disque.",
+                                choose_disk: "-- Choisir un disque --",
+                                choose_vault: "-- Choisir le coffre-fort --",
+                                already_scanned: "✅ Disques déjà scannés",
+                                all_drives: "💾 Tous les disques disponibles",
+                                no_name: "Sans nom",
+                                browse_button: "📂 Parcourir...",
+                                folder_hint: "💡 Sélectionnez un disque ou un dossier spécifique",
+                                vault_hint: "💡 Votre disque \"propre\" (on ne le modifie jamais)",
+                                // Scan panel
+                                scan_warning: "⚠️ Le scan peut prendre <strong>plusieurs heures</strong> sur un gros disque.",
+                                scan_filters_title: "📋 Types de fichiers à scanner :",
+                                scan_filters_desc: "<strong>→ Cochez les types</strong> que vous voulez scanner (ex: seulement Photos + Vidéos).<br><strong>→ Si rien n'est coché</strong>, TOUS les fichiers seront scannés (plus long).",
+                                filter_photos: "Photos",
+                                filter_videos: "Vidéos",
+                                filter_audio: "Audio",
+                                filter_docs: "Docs",
+                                update_mode: "Mode \"Mise à jour\" (plus rapide, reprend l'existant)",
+                                scan_disk_button: "📡 SCANNER CE DISQUE",
+                                scan_in_progress: "SCAN EN COURS...",
+                                compare_button: "🔍 Chercher les orphelins"
+                            },
+                            en: {
+                                title: "Unique Photo Finder",
+                                subtitle: "Smart Sort & Orphan Detection",
+                                tab_home: "Home & Scan",
+                                tab_results: "Results",
+                                step1_title: "1. Drive Configuration",
+                                step1_desc: "Select both drives involved in the operation.",
+                                source_drive: "Drive TO CLEAN (Source)",
+                                source_desc: "The drive containing the mess to sort.",
+                                vault_drive: "VAULT Drive (Reference)",
+                                vault_desc: "The clean drive where everything should be.",
+                                browse: "Browse...",
+                                step2_title: "2. Analysis (Sequential)",
+                                step2_desc: "To avoid overloading your computer, scan one drive at a time.",
+                                scan_source: "Scan SOURCE Drive",
+                                scan_vault: "Scan VAULT Drive",
+                                scan_button: "START SCAN",
+                                pause: "PAUSE",
+                                resume: "RESUME",
+                                scanning: "Scanning...",
+                                waiting: "Waiting...",
+                                scan_advice: "Tip: Start with the 'To Clean' drive, then run the 'Vault' scan once the first one is finished.",
+                                filters_title: "File Filters",
+                                results_title: "Orphan Files",
+                                results_desc: "Files present on SOURCE but missing from VAULT.",
+                                search_placeholder: "🔍 Filter by folder or filename...",
+                                no_results: "No results.",
+                                select_folder: "Select a folder on the left to view files",
+                                select_all: "Select All",
+                                select_none: "Select None",
+                                files_selected: "files selected",
+                                move_mode: "MOVE Mode",
+                                copy: "COPY",
+                                move: "MOVE",
+                                delete: "DELETE",
+                                delete_confirm_title: "⚠️ DELETE CONFIRMATION ⚠️",
+                                delete_confirm_body: "You are about to move {count} file(s) to the TRASH of the SOURCE drive:\n👉 {source}\n\n♻️ Files will be moved to the trash ($RECYCLE.BIN or .Trash).\n✅ The VAULT drive is NOT affected.\n\nDo you want to continue?",
+                                copy_confirm: "CONFIRMATION : {action} {count} files?",
+                                success_delete: "{count} files successfully deleted.",
+                                error_delete: "Some files could not be deleted:\n{errors}",
+                                open_folder_error: "Error opening folder: {error}",
+                                // Home tab - Help section
+                                help_title: "How to use this software?",
+                                help_goal_title: "🎯 What does this software do?",
+                                help_goal_desc1: "This software will compare two drives and show you the files (photos, videos, documents...) that exist ONLY on the \"To Clean\" drive but are NOT YET in your \"Vault\".",
+                                help_goal_desc2: "These unique files are called \"orphans\" 🧸. You can view them and decide to copy them to your vault or delete them.",
+                                help_source_title: "📂 \"TO CLEAN\" Drive",
+                                help_source_desc: "The drive containing your random files (SD card, USB stick, old drive, phone...). This is the one you want to \"clean\" and organize.",
+                                help_source_example: "➔ Example: your camera SD card or your old USB stick",
+                                help_vault_title: "🗄️ \"VAULT\" Drive",
+                                help_vault_desc: "Your reference drive where everything is well organized. We will NEVER modify this drive, it only serves as a comparison.",
+                                help_vault_example: "➔ Example: your main hard drive where you archive your photos",
+                                help_steps_title: "📋 How to proceed? (3 simple steps)",
+                                help_step1_title: "Scan the \"To Clean\" drive",
+                                help_step1_desc: "Choose your drive (or a specific folder if you want to scan only a part), check the file types to analyze (Photos, Videos...), then click \"SCAN THIS DRIVE\".",
+                                help_step2_title: "Scan the \"Vault\" drive",
+                                help_step2_desc: "⚠️ Important: Wait for the first scan to finish, then do the same for your reference drive. Scans are done one at a time to avoid overloading your computer.",
+                                help_step3_title: "Go to the \"RESULTS\" tab",
+                                help_step3_desc: "Once both drives are scanned, click on the \"✨ RESULTS\" tab at the top to see your orphan files and copy them if you wish.",
+                                help_pause_tip: "💡 Tip: During a scan, you can click the \"⛔ PAUSE\" button to stop it temporarily. You can resume later by checking \"Update Mode\".",
+                                help_safety: "⚠️ Don't worry: The scan does NOT modify or move ANY files. It only \"reads\" what's on your drives.",
+                                // Disk selection area
+                                disk_section_clean_title: "1. To Sort / Clean",
+                                disk_section_clean_desc: "The drive or folder containing your random files you want to check.",
+                                disk_section_vault_title: "2. Reference / Vault",
+                                disk_section_vault_desc: "The drive where everything is well organized. We will NOT touch this drive.",
+                                choose_disk: "-- Choose a disk --",
+                                choose_vault: "-- Choose the vault --",
+                                already_scanned: "✅ Already scanned disks",
+                                all_drives: "💾 All available drives",
+                                no_name: "No name",
+                                browse_button: "📂 Browse...",
+                                folder_hint: "💡 Select a drive or a specific folder",
+                                vault_hint: "💡 Your \"clean\" drive (we never modify it)",
+                                // Scan panel
+                                scan_warning: "⚠️ The scan may take <strong>several hours</strong> on a large disk.",
+                                scan_filters_title: "📋 File types to scan:",
+                                scan_filters_desc: "<strong>→ Check the types</strong> you want to scan (e.g. Photos + Videos only).<br><strong>→ If nothing is checked</strong>, ALL files will be scanned (longer).",
+                                filter_photos: "Photos",
+                                filter_videos: "Videos",
+                                filter_audio: "Audio",
+                                filter_docs: "Docs",
+                                update_mode: "\"Update\" mode (faster, resumes existing)",
+                                scan_disk_button: "📡 SCAN THIS DISK",
+                                scan_in_progress: "SCAN IN PROGRESS...",
+                                compare_button: "🔍 Find orphans"
+                            },
+                            es: {
+                                title: "Buscador de Fotos Únicas",
+                                subtitle: "Clasificación Inteligente y Detección de Huérfanos",
+                                tab_home: "Inicio y Escaneo",
+                                tab_results: "Resultados",
+                                step1_title: "1. Configuración de Discos",
+                                step1_desc: "Seleccione ambos discos involucrados en la operación.",
+                                source_drive: "Disco A LIMPIAR (Fuente)",
+                                source_desc: "El disco que contiene el desorden a clasificar.",
+                                vault_drive: "Disco FUERTE (Referencia)",
+                                vault_desc: "El disco limpio donde debería estar todo.",
+                                browse: "Examinar...",
+                                step2_title: "2. Análisis (Secuencial)",
+                                step2_desc: "Para no sobrecargar su computadora, escanee un disco a la vez.",
+                                scan_source: "Escanear Disco FUENTE",
+                                scan_vault: "Escanear Disco FUERTE",
+                                scan_button: "INICIAR ESCANEO",
+                                pause: "PAUSA",
+                                resume: "REANUDAR",
+                                scanning: "Escaneando...",
+                                waiting: "Esperando...",
+                                scan_advice: "Consejo: Comience con el disco 'A Limpiar', luego ejecute el 'Fuerte' una vez que el primero haya terminado.",
+                                filters_title: "Filtros de Archivos",
+                                results_title: "Archivos Huérfanos",
+                                results_desc: "Archivos presentes en la FUENTE pero ausentes en el FUERTE.",
+                                search_placeholder: "🔍 Filtrar por carpeta o nombre de archivo...",
+                                no_results: "Sin resultados.",
+                                select_folder: "Seleccione una carpeta a la izquierda para ver los archivos",
+                                select_all: "Seleccionar Todo",
+                                select_none: "Deseleccionar Todo",
+                                files_selected: "archivos seleccionados",
+                                move_mode: "Modo MOVER",
+                                copy: "COPIAR",
+                                move: "MOVER",
+                                delete: "ELIMINAR",
+                                delete_confirm_title: "⚠️ CONFIRMACIÓN DE ELIMINACIÓN ⚠️",
+                                delete_confirm_body: "Está a punto de mover {count} archivo(s) a la PAPELERA del disco FUENTE:\n👉 {source}\n\n♻️ Los archivos se moverán a la papelera ($RECYCLE.BIN o .Trash).\n✅ El disco FUERTE NO se ve afectado.\n\n¿Desea continuar?",
+                                copy_confirm: "CONFIRMACIÓN : ¿{action} {count} archivos?",
+                                success_delete: "{count} archivos eliminados con éxito.",
+                                error_delete: "No se pudieron eliminar algunos archivos:\n{errors}",
+                                open_folder_error: "Error al abrir carpeta: {error}",
+                                // Home tab - Help section
+                                help_title: "¿Cómo usar este software?",
+                                help_goal_title: "🎯 ¿Qué hace este software?",
+                                help_goal_desc1: "Este software comparará dos discos y le mostrará los archivos (fotos, videos, documentos...) que existen SOLO en el disco \"A Limpiar\" pero AÚN NO están en su \"Fuerte\".",
+                                help_goal_desc2: "Estos archivos únicos se llaman \"huérfanos\" 🧸. Podrá verlos y decidir copiarlos a su fuerte o eliminarlos.",
+                                help_source_title: "📂 Disco \"A LIMPIAR\"",
+                                help_source_desc: "El disco que contiene sus archivos desordenados (tarjeta SD, USB, disco antiguo, teléfono...). Este es el que desea \"limpiar\" y organizar.",
+                                help_source_example: "➔ Ejemplo: su tarjeta SD de cámara o su USB viejo",
+                                help_vault_title: "🗄️ Disco \"FUERTE\"",
+                                help_vault_desc: "Su disco de referencia donde todo está bien organizado. NUNCA modificaremos este disco, solo sirve como comparación.",
+                                help_vault_example: "➔ Ejemplo: su disco duro principal donde archiva sus fotos",
+                                help_steps_title: "📋 ¿Cómo proceder? (3 pasos simples)",
+                                help_step1_title: "Escanear el disco \"A Limpiar\"",
+                                help_step1_desc: "Elija su disco (o una carpeta específica si desea escanear solo una parte), marque los tipos de archivos a analizar (Fotos, Videos...), luego haga clic en \"ESCANEAR ESTE DISCO\".",
+                                help_step2_title: "Escanear el disco \"Fuerte\"",
+                                help_step2_desc: "⚠️ Importante: Espere a que termine el primer escaneo, luego haga lo mismo con su disco de referencia. Los escaneos se hacen uno a la vez para no sobrecargar su computadora.",
+                                help_step3_title: "Ir a la pestaña \"RESULTADOS\"",
+                                help_step3_desc: "Una vez escaneados ambos discos, haga clic en la pestaña \"✨ RESULTADOS\" en la parte superior para ver sus archivos huérfanos y copiarlos si lo desea.",
+                                help_pause_tip: "💡 Consejo: Durante un escaneo, puede hacer clic en el botón \"⛔ PAUSA\" para detenerlo temporalmente. Podrá reanudar más tarde marcando \"Modo Actualización\".",
+                                help_safety: "⚠️ Tranquilo: El escaneo NO modifica ni mueve NINGÚN archivo. Solo \"lee\" lo que hay en sus discos.",
+                                // Disk selection area
+                                disk_section_clean_title: "1. A Clasificar / Limpiar",
+                                disk_section_clean_desc: "El disco o carpeta que contiene sus archivos desordenados que desea verificar.",
+                                disk_section_vault_title: "2. Referencia / Fuerte",
+                                disk_section_vault_desc: "El disco donde todo está bien organizado. NO tocaremos este disco.",
+                                choose_disk: "-- Elegir un disco --",
+                                choose_vault: "-- Elegir el fuerte --",
+                                already_scanned: "✅ Discos ya escaneados",
+                                all_drives: "💾 Todos los discos disponibles",
+                                no_name: "Sin nombre",
+                                browse_button: "📂 Examinar...",
+                                folder_hint: "💡 Seleccione un disco o una carpeta específica",
+                                vault_hint: "💡 Su disco \"limpio\" (nunca lo modificamos)",
+                                // Scan panel
+                                scan_warning: "⚠️ El escaneo puede tardar <strong>varias horas</strong> en un disco grande.",
+                                scan_filters_title: "📋 Tipos de archivos a escanear:",
+                                scan_filters_desc: "<strong>→ Marque los tipos</strong> que desea escanear (ej: solo Fotos + Videos).<br><strong>→ Si no marca nada</strong>, se escanearán TODOS los archivos (más largo).",
+                                filter_photos: "Fotos",
+                                filter_videos: "Videos",
+                                filter_audio: "Audio",
+                                filter_docs: "Docs",
+                                update_mode: "Modo \"Actualización\" (más rápido, reanuda existente)",
+                                scan_disk_button: "📡 ESCANEAR ESTE DISCO",
+                                scan_in_progress: "ESCANEO EN CURSO...",
+                                compare_button: "🔍 Buscar huérfanos"
+                            }
+                        },
+                    }
+                },
+                computed: {
+                    totalSelectedFiles() {
+                        if (!this.selectedFolder) return 0;
+                        return this.selectedFolder.files.filter(f => f.selected).length;
+                    },
+                    hasActiveFilters() {
+                        if (this.compareEverything) return false;
+                        const hasInclude = Object.values(this.advFilters.include).some(v => v) || this.customIncludeExt;
+                        const hasExclude = Object.values(this.advFilters.exclude).some(v => v) || this.customExcludeExt;
+                        return hasInclude || hasExclude;
+                    },
+                    filteredFolders() {
+                        if (!this.folderSearchFilter) return this.folders;
+                        const search = this.folderSearchFilter.toLowerCase();
+                        return this.folders.filter(f => {
+                            // Search in folder path
+                            if (f.path.toLowerCase().includes(search)) return true;
+                            // Search in file names
+                            return f.files.some(file => file.name.toLowerCase().includes(search));
+                        });
+                    }
+                },
+                watch: {
+                    compareEverything(newVal) {
+                        if (newVal) {
+                            // When "Tout comparer" is checked, check all filters
+                            this.filters.photo = true;
+                            this.filters.video = true;
+                            this.filters.audio = true;
+                            this.filters.document = true;
+                        }
+                    }
+                },
+                mounted() {
+                    document.getElementById('loading').style.display = 'none';
+                    this.fetchSources();
+                    this.fetchDrives();
+
+                    // Check if scan is running on load
+                    this.checkScanStatus();
+                },
+                methods: {
+                    t(key, params = {}) {
+                        if (!this.translations[this.currentLang]) return key;
+                        let text = this.translations[this.currentLang][key] || key;
+                        for (const [k, v] of Object.entries(params)) {
+                            text = text.replace(`{${k}}`, v);
+                        }
+                        return text;
+                    },
+                    setLang(lang) {
+                        this.currentLang = lang;
+                    },
+
+                    async checkScanStatus() {
+                        try {
+                            const res = await fetch('/api/scan/status');
+                            const status = await res.json();
+                            if (status.is_scanning) {
+                                this.isScanning = true;
+                                this.scanProgress = status.progress;
+
+                                // Try to determine which disk is scanning based on label if possible, 
+                                // or just show generic scanning state. 
+                                // For now, we'll just set isScanning which disables buttons.
+
+                                // Poll
+                                const interval = setInterval(async () => {
+                                    const sRes = await fetch('/api/scan/status');
+                                    const s = await sRes.json();
+                                    this.scanProgress = s.progress;
+                                    if (!s.is_scanning) {
+                                        clearInterval(interval);
+                                        this.isScanning = false;
+                                        this.scanningANettoyer = false;
+                                        this.scanningCoffreFort = false;
+                                        this.fetchSources();
+                                    }
+                                }, 1000);
+                            }
+                        } catch (e) { console.error(e); }
+                    },
+                    async fetchSources() {
+                        try {
+                            const res = await fetch('/api/sources');
+                            const data = await res.json();
+                            this.sources = data.sources;
+                            if (this.sources.includes('MASTER')) this.masterLabel = 'MASTER';
+                            if (this.sources.length > 1) this.targetLabel = this.sources.find(s => s !== this.masterLabel) || '';
+                        } catch (e) { console.error(e); }
+                    },
+                    async fetchDrives() {
+                        try {
+                            const res = await fetch('/api/drives');
+                            const data = await res.json();
+                            this.drives = data.drives;
+                        } catch (e) { console.error(e); }
+                    },
+                    getDriveLabel(drive) {
+                        const identifier = drive.uuid || drive.mountpoint;
+                        return `${identifier}:${drive.mountpoint}`;
+                    },
+                    formatPathForDisplay(path) {
+                        if (!path) return '';
+                        // 1. Try to match with a known drive mountpoint
+                        for (const drive of this.drives) {
+                            if (path.startsWith(drive.mountpoint)) {
+                                const relative = path.substring(drive.mountpoint.length);
+                                const driveName = drive.label || 'Disque';
+                                // Return "DriveName / relative / path"
+                                return relative === '/' || !relative ? driveName : `${driveName}${relative}`;
+                            }
+                        }
+                        // 2. If no drive match, try to strip common prefixes like /mnt/ or /media/
+                        let cleanPath = path;
+                        // Use regex for case-insensitive replacement at the start, handling optional trailing slash in prefix
+                        // Also handle cases where the path MIGHT NOT start with /mnt or /media but is just long
+                        cleanPath = cleanPath.replace(/^(\/mnt\/|\/media\/)/i, '');
+
+                        // 3. Truncate if still too long (more than 50 chars or 4 parts)
+                        const parts = cleanPath.split('/').filter(p => p);
+                        if (parts.length > 3) {
+                            // Show first part + ... + last 2 parts for better context
+                            if (parts.length > 4) {
+                                return parts[0] + '/.../' + parts.slice(-2).join('/');
+                            }
+                            return '.../' + parts.slice(-3).join('/');
+                        }
+                        return cleanPath;
+
+
+                    },
+                    getSourceDisplayName(source) {
+                        // Remove UUID prefix if present (format: UUID:path or just UUID)
+                        if (source.includes(':')) {
+                            const parts = source.split(':');
+                            const uuid = parts[0];
+                            const path = parts[1];
+                            // Find drive by UUID to get its label
+                            const drive = this.drives.find(d => d.uuid === uuid);
+                            if (drive) {
+                                const relativePath = path.replace(drive.mountpoint, '') || '/';
+                                return relativePath === '/' ? (drive.label || drive.mountpoint) : `${drive.label || drive.mountpoint}${relativePath}`;
+                            }
+                            return path; // Fallback to path if drive not found
+                        }
+                        // Try to find if it's a UUID alone
+                        const drive = this.drives.find(d => d.uuid === source);
+                        if (drive) {
+                            return `${drive.label || 'Sans nom'} (${drive.size})`;
+                        }
+                        // Otherwise just return as-is (might be a legacy label)
+                        return source;
+                    },
+                    async scanDisk(label, type) {
+                        if (!label) return;
+
+                        // Find drive info from label (UUID:path)
+                        // Label format is UUID:path or UUID:ABSOLUTE_PATH
+                        let mountpoint = '';
+                        let actualLabel = label; // This will be the label used for the source
+                        let pathForScan = ''; // This will be the path sent to the backend
+
+                        const firstColon = label.indexOf(':');
+                        if (firstColon > -1) {
+                            const uuid = label.substring(0, firstColon);
+                            pathForScan = label.substring(firstColon + 1);
+                            const drive = this.drives.find(d => d.uuid === uuid);
+                            if (drive) {
+                                mountpoint = drive.mountpoint;
+                                // If the label contains a subpath, use that for the scan path
+                                // Otherwise, use the drive's mountpoint
+                                if (!pathForScan.startsWith(mountpoint)) {
+                                    // This case means the label is UUID:SUBPATH, but SUBPATH is not absolute from root.
+                                    // This shouldn't happen if selectPath is used correctly.
+                                    // For now, assume pathForScan is already the full path.
+                                }
+                            } else {
+                                // Drive not found by UUID, assume label is just a path or a custom label
+                                pathForScan = label;
+                            }
+                        } else {
+                            // Label is just a mountpoint or a custom label without UUID
+                            pathForScan = label;
+                        }
+
+                        // If aNettoyerLabel is set and it's a UUID, we need to get the path from it
+                        if (type === 'aNettoyer' && this.aNettoyerLabel.includes(':')) {
+                            pathForScan = this.aNettoyerLabel.split(':')[1];
+                            actualLabel = this.aNettoyerLabel; // Use the full UUID:PATH as the label
+                        } else if (type === 'aNettoyer' && this.aNettoyerLabel) {
+                            // If aNettoyerLabel is just a UUID, use its mountpoint
+                            const drive = this.drives.find(d => d.uuid === this.aNettoyerLabel);
+                            if (drive) {
+                                pathForScan = drive.mountpoint;
+                                actualLabel = this.aNettoyerLabel; // Use UUID as label
+                            } else {
+                                pathForScan = this.aNettoyerLabel; // Fallback to using it as a path
+                                actualLabel = this.aNettoyerLabel;
+                            }
+                        } else if (type === 'coffreFort' && this.coffreFortLabel.includes(':')) {
+                            pathForScan = this.coffreFortLabel.split(':')[1];
+                            actualLabel = this.coffreFortLabel;
+                        } else if (type === 'coffreFort' && this.coffreFortLabel) {
+                            const drive = this.drives.find(d => d.uuid === this.coffreFortLabel);
+                            if (drive) {
+                                pathForScan = drive.mountpoint;
+                                actualLabel = this.coffreFortLabel;
+                            } else {
+                                pathForScan = this.coffreFortLabel;
+                                actualLabel = this.coffreFortLabel;
+                            }
+                        } else {
+                            // Fallback for existing logic if aNettoyerLabel/coffreFortLabel not used
+                            pathForScan = mountpoint;
+                            actualLabel = label;
+                        }
+
+                        const updateMode = type === 'aNettoyer' ? this.scanUpdateANettoyer : this.scanUpdateCoffreFort;
+
+                        // Build include list based on filters
+                        console.log("DEBUG: scanFilters state:", JSON.stringify(this.scanFilters));
+                        let includeList = [];
+                        // Extensions definitions (matching backend)
+                        const exts = {
+                            photo: ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.tiff', '.tif', '.heic', '.heif', '.raw', '.cr2', '.cr3', '.nef', '.arw', '.dng', '.orf', '.rw2', '.pef', '.raf'],
+                            video: ['.mp4', '.mov', '.avi', '.mkv', '.wmv', '.flv', '.webm', '.m4v', '.mts', '.m2ts', '.3gp', '.mpg', '.mpeg'],
+                            audio: ['.mp3', '.flac', '.wav', '.m4a', '.aac', '.ogg', '.wma'],
+                            document: ['.pdf', '.doc', '.docx', '.txt', '.xls', '.xlsx', '.ppt', '.pptx', '.odt', '.ods', '.odp', '.rtf', '.csv']
+                        };
+
+                        if (this.scanFilters.photo) includeList.push(...exts.photo);
+                        if (this.scanFilters.video) includeList.push(...exts.video);
+                        if (this.scanFilters.audio) includeList.push(...exts.audio);
+                        if (this.scanFilters.document) includeList.push(...exts.document);
+
+                        const includeParam = includeList.length > 0 ? `&include=${encodeURIComponent(includeList.join(','))}` : '';
+
+                        const url = `/api/scan?path=${encodeURIComponent(pathForScan)}&label=${encodeURIComponent(actualLabel)}&update=${updateMode}${includeParam}`;
+                        console.log("Starting scan with URL:", url);
+
+                        // Set scanning state
+                        this.isScanning = true;
+                        if (type === 'aNettoyer') {
+                            this.scanningANettoyer = true;
+                        } else {
+                            this.scanningCoffreFort = true;
+                        }
+
+                        try {
+                            // Start scan
+                            await fetch(url, { method: 'POST' });
+
+                            // Poll for progress
+                            const interval = setInterval(async () => {
+                                const statusRes = await fetch('/api/scan/status');
+                                const status = await statusRes.json();
+                                this.scanProgress = status.progress;
+
+                                if (!status.is_scanning) {
+                                    clearInterval(interval);
+                                    this.isScanning = false;
+
+                                    // Set label for successful scan
+                                    if (type === 'aNettoyer') {
+                                        this.scanningANettoyer = false;
+                                        this.aNettoyerLabel = actualLabel;
+                                        // Auto-select if not already
+                                        this.targetLabel = actualLabel;
+                                    } else {
+                                        this.scanningCoffreFort = false;
+                                        this.coffreFortLabel = actualLabel;
+                                        // Auto-select if not already
+                                        this.masterLabel = actualLabel;
+                                    }
+
+                                    this.fetchSources();  // Refresh sources list
+                                }
+                            }, 1000);
+                        } catch (e) {
+                            alert("Erreur scan: " + e);
+                            this.isScanning = false;
+                            if (type === 'aNettoyer') {
+                                this.scanningANettoyer = false;
+                            } else {
+                                this.scanningCoffreFort = false;
+                            }
+                        }
+                    },
+                    selectDrive(drive) {
+                        this.selectedDrive = drive;
+                        this.selectedPath = drive.mountpoint;
+
+                        // Internal label: UUID + mountpoint for absolute uniqueness
+                        // Format: UUID:path or MOUNTPOINT:path if no UUID
+                        const identifier = drive.uuid || drive.mountpoint;
+                        this.scanLabel = `${identifier}:${drive.mountpoint}`;
+
+                        // Display label: LABEL (or mountpoint if no label)
+                        this.scanLabelDisplay = drive.label || drive.mountpoint;
+                    },
+                    selectPath(path) {
+                        // This method is now primarily used by the browser modal to set the path for the selected drive.
+                        // It should update the `aNettoyerLabel` or `coffreFortLabel` with the UUID:PATH format.
+
+                        let driveUuid = '';
+                        if (this.browserTarget === 'aNettoyer' && this.aNettoyerLabel) {
+                            driveUuid = this.aNettoyerLabel; // Assuming aNettoyerLabel holds the UUID
+                        } else if (this.browserTarget === 'coffreFort' && this.coffreFortLabel) {
+                            driveUuid = this.coffreFortLabel; // Assuming coffreFortLabel holds the UUID
+                        }
+
+                        const drive = this.drives.find(d => d.uuid === driveUuid);
+
+                        if (drive) {
+                            const newLabel = `${drive.uuid}:${path}`;
+
+                            // Add to sources if not present so it shows in dropdown
+                            if (!this.sources.includes(newLabel)) {
+                                this.sources.push(newLabel);
+                            }
+
+                            if (this.browserTarget === 'aNettoyer') {
+                                this.aNettoyerLabel = newLabel;
+                                this.targetLabel = newLabel; // Sync for orphan search
+                            } else if (this.browserTarget === 'coffreFort') {
+                                this.coffreFortLabel = newLabel;
+                                this.masterLabel = newLabel; // Also update masterLabel for comparison
+                            }
+                        } else {
+                            // Fallback if drive not found or no UUID selected yet, just use path as label
+                            if (!this.sources.includes(path)) {
+                                this.sources.push(path);
+                            }
+
+                            if (this.browserTarget === 'aNettoyer') {
+                                this.aNettoyerLabel = path;
+                                this.targetLabel = path;
+                            } else if (this.browserTarget === 'coffreFort') {
+                                this.coffreFortLabel = path;
+                                this.masterLabel = path;
+                            }
+                        }
+                    },
+
+                    // Browser Methods
+                    async openBrowser(type) {
+                        this.browserTarget = type; // 'aNettoyer' or 'coffreFort'
+
+                        let startPath = '/media';
+                        let currentDriveUuid = '';
+                        let label = '';
+
+                        if (type === 'aNettoyer') {
+                            label = this.aNettoyerLabel;
+                        } else if (type === 'coffreFort') {
+                            label = this.coffreFortLabel;
+                        }
+
+                        if (!label) {
+                            // Try to fallback to the bound data directly if passed param is empty
+                            if (type === 'aNettoyer') label = this.aNettoyerLabel;
+                            if (type === 'coffreFort') label = this.coffreFortLabel;
+
+                            if (!label) {
+                                alert("Erreur: Aucun disque sélectionné pour " + type + ". Veuillez sélectionner un disque dans la liste déroulante.");
+                                return;
+                            }
+                        }
+
+                        if (label.includes(':')) {
+                            // If it's UUID:PATH, extract path
+                            startPath = label.split(':')[1];
+                            currentDriveUuid = label.split(':')[0];
+                        } else {
+                            // If it's just UUID, find mountpoint
+                            currentDriveUuid = label;
+                            const drive = this.drives.find(d => d.uuid === currentDriveUuid);
+                            if (drive) {
+                                startPath = drive.mountpoint;
+                            } else {
+                                // Drive not found in list?
+                                console.warn("Drive not found for UUID:", currentDriveUuid);
+                                // Fallback to /media if we can't find the drive
+                                startPath = '/media';
+                            }
+                        }
+
+                        console.log("Opening browser at:", startPath);
+                        this.showBrowser = true;
+                        this.browserPath = startPath;
+                        await this.fetchBrowserDirs(this.browserPath);
+                    },
+                    async fetchBrowserDirs(path) {
+                        this.browserLoading = true;
+                        try {
+                            const res = await fetch(`/api/browse?path=${encodeURIComponent(path)}`);
+                            const data = await res.json();
+                            if (data.error) {
+                                alert(data.error);
+                                // If there's an error, try to go up one level
+                                const parent = path.split('/').slice(0, -1).join('/') || '/';
+                                if (parent !== path) { // Avoid infinite loop if already at root or invalid path
+                                    await this.fetchBrowserDirs(parent);
+                                }
+                            } else {
+                                this.browserPath = data.path;
+                                this.browserDirs = data.subdirs;
+                            }
+                        } catch (e) { console.error(e); } finally { this.browserLoading = false; }
+                    },
+                    async browseTo(dirname) {
+                        const newPath = this.browserPath === '/' ? `/${dirname}` : `${this.browserPath}/${dirname}`;
+                        await this.fetchBrowserDirs(newPath);
+                    },
+                    async browseUp() {
+                        const parts = this.browserPath.split('/').filter(p => p);
+                        parts.pop();
+                        const newPath = '/' + parts.join('/');
+                        await this.fetchBrowserDirs(newPath || '/');
+                    },
+                    confirmBrowserSelection() {
+                        this.selectPath(this.browserPath);
+                        this.showBrowser = false;
+                    },
+
+                    async startScan() {
+                        if (!this.selectedPath || !this.scanLabel) return;
+                        try {
+                            await fetch(`/api/scan?path=${encodeURIComponent(this.selectedPath)}&label=${encodeURIComponent(this.scanLabel)}&update=${this.scanUpdate}`, { method: 'POST' });
+                            this.isScanning = true;
+                            this.pollScanStatus();
+                        } catch (e) { alert("Erreur: " + e); }
+                    },
+                    pollScanStatus() {
+                        if (this.scanPollInterval) clearInterval(this.scanPollInterval);
+                        this.scanPollInterval = setInterval(async () => {
+                            try {
+                                const res = await fetch('/api/scan/status');
+                                const data = await res.json();
+                                this.isScanning = data.is_scanning;
+                                this.scanProgress = data.progress;
+                                if (!this.isScanning && this.scanProgress?.status === 'finished') {
+                                    clearInterval(this.scanPollInterval);
+                                    this.fetchSources();
+                                }
+                            } catch (e) { }
+                        }, 1000);
+                    },
+                    loadFolders() {
+                        // Alias for fetchOrphans (called by Results tab button)
+                        return this.fetchOrphans();
+                    },
+                    async fetchOrphans() {
+                        if (!this.masterLabel || !this.targetLabel) return;
+                        this.loading = true;
+                        this.folders = [];
+                        this.selectedFolder = null;
+
+                        // Construct Include/Exclude lists
+                        const includeExts = [];
+                        const excludeExts = [];
+
+                        if (!this.compareEverything) {
+                            // Use scanFilters (Simple Categories)
+                            // Use scanFilters (Simple Categories)
+                            const exts = {
+                                photo: ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.tiff', '.tif', '.heic', '.heif', '.raw', '.cr2', '.cr3', '.nef', '.arw', '.dng', '.orf', '.rw2', '.pef', '.raf'],
+                                video: ['.mp4', '.mov', '.avi', '.mkv', '.wmv', '.flv', '.webm', '.m4v', '.mts', '.m2ts', '.3gp', '.mpg', '.mpeg'],
+                                audio: ['.mp3', '.flac', '.wav', '.m4a', '.aac', '.ogg', '.wma'],
+                                document: ['.pdf', '.doc', '.docx', '.txt', '.xls', '.xlsx', '.ppt', '.pptx', '.odt', '.ods', '.odp', '.rtf', '.csv']
+                            };
+
+                            if (this.scanFilters.photo) includeExts.push(...exts.photo);
+                            if (this.scanFilters.video) includeExts.push(...exts.video);
+                            if (this.scanFilters.audio) includeExts.push(...exts.audio);
+                            if (this.scanFilters.document) includeExts.push(...exts.document);
+                        }
+
+                        // Deduplicate
+                        const uniqueInclude = [...new Set(includeExts)];
+                        const uniqueExclude = [...new Set(excludeExts)];
+
+                        try {
+                            const params = new URLSearchParams({
+                                master: this.masterLabel,
+                                target: this.targetLabel
+                            });
+
+                            if (uniqueInclude.length > 0) params.append('include', uniqueInclude.join(','));
+                            if (uniqueExclude.length > 0) params.append('exclude', uniqueExclude.join(','));
+
+                            const res = await fetch(`/api/orphans?${params.toString()}`);
+                            const data = await res.json();
+                            this.folders = data.folders.map(f => ({ ...f, keep: true, files: f.files.map(file => ({ ...file, selected: true })) }));
+                        } catch (e) { alert("Erreur analyse: " + e); } finally { this.loading = false; }
+                    },
+                    selectFolder(folder) {
+                        this.selectedFolder = folder;
+
+                        // Auto-fill destination path with last 3-4 folders from source
+                        if (folder && folder.path) {
+                            const pathParts = folder.path.split('/').filter(p => p);
+                            // Take last 4 folder levels (or less if path is shorter)
+                            const lastFolders = pathParts.slice(-4).join('/');
+
+                            // Suggest destination: /vault/RECUP_UNIDISK/lastFolders
+                            // User can edit this path as needed
+                            if (this.masterLabel) {
+                                // Try to use vault path if available, otherwise use generic
+                                this.destPath = `/mnt/RECUP_UNIDISK/${lastFolders}`;
+                            } else {
+                                this.destPath = `/RECUP_UNIDISK/${lastFolders}`;
+                            }
+                        }
+                    },
+                    isImage(filename) { return /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(filename); },
+                    selectAll(val) { if (this.selectedFolder) this.selectedFolder.files.forEach(f => f.selected = val); },
+                    async openFile(path) {
+                        try {
+                            await fetch(`/api/open?path=${encodeURIComponent(path)}`, { method: 'POST' });
+                        } catch (e) { console.error(e); }
+                    },
+                    async openFolder(path) {
+                        try {
+                            await fetch(`/api/open?path=${encodeURIComponent(path)}`, { method: 'POST' });
+                        } catch (e) {
+                            alert(this.t('open_folder_error', { error: e }));
+                        }
+                    },
+                    async deleteFiles() {
+                        if (this.totalSelectedFiles === 0) return;
+
+                        const selectedFiles = this.selectedFolder.files.filter(f => f.selected);
+                        const count = selectedFiles.length;
+
+                        const confirmMsg = this.t('delete_confirm_body', {
+                            count: count,
+                            source: this.getSourceDisplayName(this.targetLabel)
+                        });
+
+                        if (!confirm(this.t('delete_confirm_title') + "\n\n" + confirmMsg)) {
+                            return;
+                        }
+
+                        this.copying = true; // Use copying state to disable buttons
+                        try {
+                            const res = await fetch('/api/delete', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(selectedFiles.map(f => f.path))
+                            });
+                            const result = await res.json();
+
+                            if (result.deleted_count > 0) {
+                                // Remove deleted files from UI
+                                const deletedPaths = selectedFiles.map(f => f.path);
+                                this.selectedFolder.files = this.selectedFolder.files.filter(f => !deletedPaths.includes(f.path));
+
+                                // If folder empty, remove it? Maybe keep it for now.
+                                alert(this.t('success_delete', { count: result.deleted_count }));
+                            }
+
+                            if (result.errors && result.errors.length > 0) {
+                                alert(this.t('error_delete', { errors: result.errors.join('\n') }));
+                            }
+
+                        } catch (e) {
+                            alert("Erreur lors de la suppression: " + e);
+                        } finally {
+                            this.copying = false;
+                        }
+                    },
+                    async copyFiles() {
+                        const action = this.moveMode ? this.t('move') : this.t('copy');
+                        if (!confirm(this.t('copy_confirm', { action: action, count: this.totalSelectedFiles }))) return;
+                        this.copying = true;
+                        const filesToCopy = [];
+                        for (const folder of this.folders) {
+                            if (!folder.keep) continue;
+                            for (const file of folder.files) {
+                                if (file.selected !== false) filesToCopy.push(file.path);
+                            }
+                        }
+                        try {
+                            const res = await fetch(`/api/copy?dest=${encodeURIComponent(this.destPath)}&move=${this.moveMode}`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(filesToCopy)
+                            });
+                            const result = await res.json();
+                            alert(`Terminé ! ${result.copied} OK, ${result.errors} Erreurs.`);
+                            this.fetchOrphans();
+                        } catch (e) { alert("Erreur"); } finally { this.copying = false; }
+                    },
+                    async shutdown() {
+                        if (confirm("Quitter ?")) {
+                            await fetch('/api/shutdown', { method: 'POST' });
+                            document.body.innerHTML = "<div class='flex h-screen items-center justify-center text-xl'>Fermé.</div>";
+                        }
+                    },
+                    async deleteSource(label) {
+                        if (!confirm(`ATTENTION : Voulez-vous vraiment oublier le disque "${label}" ?\nCela supprimera l'index de ce disque de la base de données (mais ne touchera pas aux fichiers réels).`)) return;
+
+                        try {
+                            const res = await fetch(`/api/source/delete?label=${encodeURIComponent(label)}`, { method: 'POST' });
+                            const data = await res.json();
+                            if (data.error) {
+                                alert("Erreur: " + data.error);
+                            } else {
+                                alert(`Source "${label}" supprimée.`);
+                                this.fetchSources(); // Refresh list
+                            }
+                        } catch (e) {
+                            alert("Erreur réseau: " + e);
+                        }
+                    },
+                    // Select All methods for filter categories
+                    selectAllPhotos(val) {
+                        const photoExts = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'tiff', 'tif', 'heic', 'heif', 'raw', 'cr2', 'cr3', 'nef', 'arw', 'dng', 'orf', 'rw2', 'pef', 'raf'];
+                        photoExts.forEach(ext => this.advFilters.include[ext] = val);
+                    },
+                    selectAllVideos(val) {
+                        const videoExts = ['mp4', 'mov', 'avi', 'mkv', 'wmv', 'flv', 'webm', 'm4v', 'mts', 'm2ts', 'threeGp', 'mpg', 'mpeg'];
+                        videoExts.forEach(ext => this.advFilters.include[ext] = val);
+                    },
+                    selectAllAudio(val) {
+                        const audioExts = ['mp3', 'flac', 'wav', 'm4a', 'aac', 'ogg', 'wma'];
+                        audioExts.forEach(ext => this.advFilters.include[ext] = val);
+                    },
+                    selectAllDocs(val) {
+                        const docExts = ['pdf', 'doc', 'docx', 'txt', 'xls', 'xlsx', 'ppt', 'pptx'];
+                        docExts.forEach(ext => this.advFilters.include[ext] = val);
+                    },
+                    selectAllSystem(val) {
+                        const sysExts = ['tmp', 'db', 'ini', 'lrcat', 'xmp', 'cache', 'log'];
+                        sysExts.forEach(ext => this.advFilters.exclude[ext] = val);
+                    },
+                    async renameSource(oldLabel) {
+                        const newLabel = prompt(`Nouveau nom pour "${oldLabel}" :`, oldLabel);
+                        if (!newLabel || newLabel === oldLabel) return;
+
+                        try {
+                            const res = await fetch(`/api/source/rename?old_label=${encodeURIComponent(oldLabel)}&new_label=${encodeURIComponent(newLabel)}`, { method: 'POST' });
+                            const data = await res.json();
+                            if (data.error) {
+                                alert("Erreur: " + data.error);
+                            } else {
+                                alert(`Source renommée en "${newLabel}".`);
+                                this.fetchSources();
+                            }
+                        } catch (e) {
+                            alert("Erreur réseau: " + e);
+                        }
+                    },
+                    togglePause() {
+                        this.paused = !this.paused;
+                        // For now, just toggle the state. In a full implementation,
+                        // you'd call the backend to pause/resume the scan
+                        if (this.paused) {
+                            this.stopScan();
+                        }
+                    },
+                    async stopScan() {
+                        if (!confirm("Voulez-vous vraiment arrêter le scan ?\nVous pourrez le reprendre plus tard en cochant 'Mise à jour'.")) return;
+                        try {
+                            await fetch('/api/scan/stop', { method: 'POST' });
+                        } catch (e) { console.error(e); }
+                    }
+                }
+            }).mount('#app')
+        </script>
+</body>
+
+</html>
